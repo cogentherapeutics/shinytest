@@ -4,7 +4,7 @@
 
 sd_initialize <- function(self, private, path, loadTimeout, checkNames,
                           debug, phantomTimeout, seed, cleanLogs,
-                          shinyOptions) {
+                          shinyOptions, url=NULL) {
 
   private$cleanLogs <- cleanLogs
 
@@ -18,9 +18,13 @@ sd_initialize <- function(self, private, path, loadTimeout, checkNames,
   self$logEvent("Getting PhantomJS port")
   private$phantomPort <- get_phantomPort(timeout = phantomTimeout)
 
-  if (grepl("^http(s?)://", path)) {
-    private$setShinyUrl(path)
+  if(!dir_exists(path))
+    stop("No such directory: ", path)
+  private$path = path
 
+  if(!is.null(url)) {
+    "!DEBUG setting URL provided by the user"
+    private$setShinyUrl(url)
   } else {
     "!DEBUG starting shiny app from path"
     self$logEvent("Starting Shiny app")

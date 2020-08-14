@@ -219,11 +219,11 @@ ShinyDriver <- R6Class(
     initialize = function(path = ".", loadTimeout = 5000, checkNames = TRUE,
       debug = c("none", "all", shinytest::ShinyDriver$debugLogTypes),
       phantomTimeout = 5000, seed = NULL, cleanLogs = TRUE,
-      shinyOptions = list())
+      shinyOptions = list(), url=NULL)
     {
       sd_initialize(self, private, path, loadTimeout, checkNames, debug,
         phantomTimeout = phantomTimeout, seed = seed, cleanLogs = cleanLogs,
-        shinyOptions = shinyOptions)
+        shinyOptions = shinyOptions, url=url)
     },
 
     finalize = function()
