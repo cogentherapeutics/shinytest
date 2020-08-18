@@ -1,47 +1,40 @@
 
 #' Class to manage a shiny app and a phantom.js headless browser
 #'
-#' @section Usage:
-#' \preformatted{app <- ShinyDriver$new(path = ".", loadTimeout = 5000,
-#'               checkNames = TRUE, debug = c("none", "all",
-#'               ShinyDriver$debugLogTypes), phantomTimeout = 5000,
-#'               seed = NULL, cleanLogs = TRUE, shinyOptions = list()))
-#' app$stop()
-#' app$getDebugLog(type = c("all", ShinyDriver$debugLogTypes))
+#' @section Usage: \preformatted{app <- ShinyDriver$new(path = ".", loadTimeout
+#'   = 5000, checkNames = TRUE, debug = c("none", "all",
+#'   ShinyDriver$debugLogTypes), phantomTimeout = 5000, seed = NULL, cleanLogs =
+#'   TRUE, shinyOptions = list()), url=NULL) app$stop() app$getDebugLog(type =
+#'   c("all", ShinyDriver$debugLogTypes))
 #'
-#' app$getValue(name, iotype = c("auto", "input", "output"))
-#' app$setValue(name, value, iotype = c("auto", "input", "output"))
-#' app$sendKeys(name = NULL, keys)
+#'   app$getValue(name, iotype = c("auto", "input", "output"))
+#'   app$setValue(name, value, iotype = c("auto", "input", "output"))
+#'   app$sendKeys(name = NULL, keys)
 #'
-#' app$getWindowSize()
-#' app$setWindowSize(width, height)
+#'   app$getWindowSize() app$setWindowSize(width, height)
 #'
-#' app$getUrl()
-#' app$goBack()
-#' app$refresh()
-#' app$getTitle()
-#' app$getSource()
-#' app$takeScreenshot(file = NULL)
+#'   app$getUrl() app$goBack() app$refresh() app$getTitle() app$getSource()
+#'   app$takeScreenshot(file = NULL)
 #'
-#' app$findElement(css = NULL, linkText = NULL,
-#'      partialLinkText = NULL, xpath = NULL)
+#'   app$findElement(css = NULL, linkText = NULL, partialLinkText = NULL, xpath
+#'   = NULL)
 #'
-#' app$findElements(css = NULL, linkText = NULL,
-#'      partialLinkText = NULL, xpath = NULL)
+#'   app$findElements(css = NULL, linkText = NULL, partialLinkText = NULL, xpath
+#'   = NULL)
 #'
-#' app$waitFor(expr, checkInterval = 100, timeout = 3000)
+#'   app$waitFor(expr, checkInterval = 100, timeout = 3000)
 #'
-#' app$waitForValue(name, ignore = list(NULL, ""), iotype = "input", timeout = 10000, checkInterval = 400)
+#'   app$waitForValue(name, ignore = list(NULL, ""), iotype = "input", timeout =
+#'   10000, checkInterval = 400)
 #'
-#' app$listWidgets()
+#'   app$listWidgets()
 #'
-#' app$checkUniqueWidgetNames()
+#'   app$checkUniqueWidgetNames()
 #'
-#' app$findWidget(name, iotype = c("auto", "input", "output"))
+#'   app$findWidget(name, iotype = c("auto", "input", "output"))
 #'
-#' app$expectUpdate(output, ..., timeout = 3000,
-#'     iotype = c("auto", "input", "output"))
-#' }
+#'   app$expectUpdate(output, ..., timeout = 3000, iotype = c("auto", "input",
+#'   "output")) }
 #'
 #' @section Arguments:
 #' \describe{
@@ -63,139 +56,127 @@
 #'   \item{cleanLogs}{Whether to remove the stdout and stderr logs when the
 #'     Shiny process object is garbage collected.}
 #'   \item{shinyOptions}{A list of options to pass to \code{runApp()}.}
-#'   \item{name}{Name of a shiny widget. For \code{$sendKeys} it can
-#'      be \code{NULL}, in which case the keys are sent to the active
-#'      HTML element.}
-#'   \item{iotype}{Type of the Shiny widget. Usually \code{shinytest}
-#'      finds the widgets by their name, so this need not be specified,
-#'      but Shiny allows input and output widgets with identical names.}
-#'   \item{keys}{Keys to send to the widget or the app. See the
-#'      \code{sendKeys} method of the \code{webdriver} package.}
+#'   \item{url}{Optional URL where the shiny app is executing.} \item{name}{Name
+#'   of a shiny widget. For \code{$sendKeys} it can be \code{NULL}, in which
+#'   case the keys are sent to the active HTML element.} \item{iotype}{Type of
+#'   the Shiny widget. Usually \code{shinytest} finds the widgets by their name,
+#'   so this need not be specified, but Shiny allows input and output widgets
+#'   with identical names.} \item{keys}{Keys to send to the widget or the app.
+#'   See the \code{sendKeys} method of the \code{webdriver} package.}
 #'   \item{width}{Scalar integer, the desired width of the browser window.}
-#'   \item{height}{Scalar integer, the desired height of the browser
-#'      window.}
-#'   \item{file}{File name to save the screenshot to. If \code{NULL}, then
-#'     it will be shown on the R graphics device.}
-#'   \item{css}{CSS selector to find an HTML element.}
-#'   \item{linkText}{Find \code{<a>} HTML elements based on their
-#'     \code{innerText}.}
-#'   \item{partialLinkText}{Find \code{<a>} HTML elements based on their
-#'     \code{innerText}. It uses partial matching.}
-#'   \item{xpath}{Find HTML elements using XPath expressions.}
-#'   \item{expr}{A string scalar containing JavaScript code that
-#'     evaluates to the condition to wait for.}
-#'   \item{checkInterval}{How often to check for the condition, in
-#'     milliseconds.}
-#'   \item{ignore}{List of possible values that are to not be
-#'     considered valid.  \code{app$waitForValue} will continue to poll until
-#'     it finds a value not contained in \code{ignore}.}
-#'   \item{timeout}{Timeout for the condition, in milliseconds.}
-#'   \item{output}{Character vector, the name(s) of the Shiny output
-#'     widgets that should be updated.}
-#'   \item{allowInputNoBinding_}{When setting the value of an input, allow
-#'     it to set the value of an input even if that input does not have
-#'     an input binding.}
-#'   \item{...}{For \code{expectUpdate} these can be named arguments.
-#'     The argument names correspond to Shiny input widgets: each input
-#'     widget will be set to the specified value.}
-#' }
+#'   \item{height}{Scalar integer, the desired height of the browser window.}
+#'   \item{file}{File name to save the screenshot to. If \code{NULL}, then it
+#'   will be shown on the R graphics device.} \item{css}{CSS selector to find an
+#'   HTML element.} \item{linkText}{Find \code{<a>} HTML elements based on their
+#'   \code{innerText}.} \item{partialLinkText}{Find \code{<a>} HTML elements
+#'   based on their \code{innerText}. It uses partial matching.}
+#'   \item{xpath}{Find HTML elements using XPath expressions.} \item{expr}{A
+#'   string scalar containing JavaScript code that evaluates to the condition to
+#'   wait for.} \item{checkInterval}{How often to check for the condition, in
+#'   milliseconds.} \item{ignore}{List of possible values that are to not be
+#'   considered valid.  \code{app$waitForValue} will continue to poll until it
+#'   finds a value not contained in \code{ignore}.} \item{timeout}{Timeout for
+#'   the condition, in milliseconds.} \item{output}{Character vector, the
+#'   name(s) of the Shiny output widgets that should be updated.}
+#'   \item{allowInputNoBinding_}{When setting the value of an input, allow it to
+#'   set the value of an input even if that input does not have an input
+#'   binding.} \item{...}{For \code{expectUpdate} these can be named arguments.
+#'   The argument names correspond to Shiny input widgets: each input widget
+#'   will be set to the specified value.} }
 #'
 #' @section Details:
 #'
-#' \code{ShinyDriver$new()} function creates a \code{ShinyDriver} object. It starts
-#' the Shiny app in a new R session, and it also starts a \code{phantomjs}
-#' headless browser that connects to the app. It waits until the app is
-#' ready to use. It waits at most \code{loadTimeout} milliseconds, and if
-#' the app is not ready, then it throws an error. You can increase
-#' \code{loadTimeout} for slow loading apps. Currently it supports apps
-#' that are defined in a single \code{app.R} file, or in a \code{server.R}
-#' and \code{ui.R} pair.
+#'   \code{ShinyDriver$new()} function creates a \code{ShinyDriver} object and
+#'   starts a \code{phantomjs} headless browser that connects to the app at
+#'   \code{url} if specified, if not, it starts the Shiny app located at
+#'   \code{path} in a new R session. (Apps can be defined a single \code{app.R}
+#'   file, in a \code{server.R} and \code{ui.R} pair, or a R Markdown
+#'   (\code{Rmd}) document.) It then waits until the app is ready to use, at
+#'   most \code{loadTimeout} milliseconds.  If the app is not then ready, it
+#'   throws an error. You can increase \code{loadTimeout} for slow loading apps.
 #'
-#' \code{app$stop()} stops the app, i.e. the external R process that runs
-#' the app, and also the phantomjs instance.
+#'   \code{app$stop()} stops the app, i.e. the external R process that runs the
+#'   app, and also the phantomjs instance.
 #'
-#' \code{app$getDebugLog()} queries one or more of the debug logs:
-#' \code{shiny_console}, \code{browser} or \code{shinytest}.
+#'   \code{app$getDebugLog()} queries one or more of the debug logs:
+#'   \code{shiny_console}, \code{browser} or \code{shinytest}.
 #'
-#' \code{app$getValue()} finds a widget and queries its value. See
-#' the \code{getValue} method of the \code{\link{Widget}} class.
+#'   \code{app$getValue()} finds a widget and queries its value. See the
+#'   \code{getValue} method of the \code{\link{Widget}} class.
 #'
-#' \code{app$setInputs()} sets the value of inputs. The arguments must all
-#' be named; an input with each name will be assigned the given value.
+#'   \code{app$setInputs()} sets the value of inputs. The arguments must all be
+#'   named; an input with each name will be assigned the given value.
 #'
-#' \code{app$uploadFile()} uploads a file to a file input. The argument must
-#' be named and the value must be the path to a local file; that file will be
-#' uploaded to a file input with that name.
+#'   \code{app$uploadFile()} uploads a file to a file input. The argument must
+#'   be named and the value must be the path to a local file; that file will be
+#'   uploaded to a file input with that name.
 #'
-#' \code{app$getAllValues()} returns a named list of all inputs, outputs,
-#' and export values.
+#'   \code{app$getAllValues()} returns a named list of all inputs, outputs, and
+#'   export values.
 #'
-#' \code{app$setValue()} finds a widget and sets its value. See the
-#' \code{setValue} method of the \code{\link{Widget}} class.
+#'   \code{app$setValue()} finds a widget and sets its value. See the
+#'   \code{setValue} method of the \code{\link{Widget}} class.
 #'
-#' \code{app$sendKeys} sends the specified keys to the HTML element of the
-#' widget.
+#'   \code{app$sendKeys} sends the specified keys to the HTML element of the
+#'   widget.
 #'
-#' \code{app$getWindowSize()} returns the current size of the browser
-#' window, in a list of two integer scalars named \sQuote{width} and
-#' \sQuote{height}.
+#'   \code{app$getWindowSize()} returns the current size of the browser window,
+#'   in a list of two integer scalars named \sQuote{width} and \sQuote{height}.
 #'
-#' \code{app$setWindowSize()} sets the size of the browser window to the
-#' specified width and height.
+#'   \code{app$setWindowSize()} sets the size of the browser window to the
+#'   specified width and height.
 #'
-#' \code{app$getUrl()} returns the current URL.
+#'   \code{app$getUrl()} returns the current URL.
 #'
-#' \code{app$goBack()} \dQuote{presses} the browser's \sQuote{back}
-#' button.
+#'   \code{app$goBack()} \dQuote{presses} the browser's \sQuote{back} button.
 #'
-#' \code{app$refresh()} \dQuote{presses} the browser's \sQuote{refresh}
-#' button.
+#'   \code{app$refresh()} \dQuote{presses} the browser's \sQuote{refresh}
+#'   button.
 #'
-#' \code{app$getTitle()} returns the title of the page. (More precisely
-#' the document title.)
+#'   \code{app$getTitle()} returns the title of the page. (More precisely the
+#'   document title.)
 #'
-#' \code{app$getSource()} returns the complete HTML source of the current
-#' page, in a character scalar.
+#'   \code{app$getSource()} returns the complete HTML source of the current
+#'   page, in a character scalar.
 #'
-#' \code{app$takeScreenshot()} takes a screenshot of the current page
-#' and writes it to a file, or (if \code{file} is \code{NULL}) shows it
-#' on the R graphics device. The output file has PNG format.
+#'   \code{app$takeScreenshot()} takes a screenshot of the current page and
+#'   writes it to a file, or (if \code{file} is \code{NULL}) shows it on the R
+#'   graphics device. The output file has PNG format.
 #'
-#' \code{app$findElement()} find an HTML element on the page, using a
-#' CSS selector or an XPath expression. The return value is an
-#' \code{\link[webdriver]{Element}} object from the \code{webdriver}
-#' package.
+#'   \code{app$findElement()} find an HTML element on the page, using a CSS
+#'   selector or an XPath expression. The return value is an
+#'   \code{\link[webdriver]{Element}} object from the \code{webdriver} package.
 #'
-#' \code{app$findElements()} finds potentially multiple HTML elements,
-#' and returns them in a list of \code{\link[webdriver]{Element}} objects
-#' from the \code{webdriver} package.
+#'   \code{app$findElements()} finds potentially multiple HTML elements, and
+#'   returns them in a list of \code{\link[webdriver]{Element}} objects from the
+#'   \code{webdriver} package.
 #'
-#' \code{app$waitFor()} waits until a JavaScript expression evaluates
-#' to \code{true}, or a timeout happens. It returns \code{TRUE} is the
-#' expression evaluated to \code{true}, possible after some waiting.
+#'   \code{app$waitFor()} waits until a JavaScript expression evaluates to
+#'   \code{true}, or a timeout happens. It returns \code{TRUE} is the expression
+#'   evaluated to \code{true}, possible after some waiting.
 #'
-#' \code{app$waitForValue()} waits until the current application's
-#' \code{input} (or \code{output}) value is not one of the supplied invalid
-#' values.  The function returns the value found if the time limit has not
-#' been reached (default is 10 seconds).  This function can be useful in
-#' helping determine if an application has initialized or finished
-#' processing a complex reactive situation.
+#'   \code{app$waitForValue()} waits until the current application's
+#'   \code{input} (or \code{output}) value is not one of the supplied invalid
+#'   values.  The function returns the value found if the time limit has not
+#'   been reached (default is 10 seconds).  This function can be useful in
+#'   helping determine if an application has initialized or finished processing
+#'   a complex reactive situation.
 #'
-#' \code{app$listWidgets()} lists the names of all input and output
-#' widgets. It returns a list of two character vectors, named \code{input}
-#' and \code{output}.
+#'   \code{app$listWidgets()} lists the names of all input and output widgets.
+#'   It returns a list of two character vectors, named \code{input} and
+#'   \code{output}.
 #'
-#' \code{app$checkUniqueWidgetNames()} checks if Shiny widget names
-#' are unique.
+#'   \code{app$checkUniqueWidgetNames()} checks if Shiny widget names are
+#'   unique.
 #'
-#' \code{app$findWidget()} finds the corresponding HTML element of a Shiny
-#' widget. It returns a \code{\link{Widget}} object.
+#'   \code{app$findWidget()} finds the corresponding HTML element of a Shiny
+#'   widget. It returns a \code{\link{Widget}} object.
 #'
-#' \code{expectUpdate()} is one of the main functions to test Shiny apps.
-#' It performs one or more update operations via the browser, and then
-#' waits for the specified output widgets to update. The test succeeds if
-#' all specified output widgets are updated before the timeout. For
-#' updates that involve a lot of computation, you increase the timeout.
+#'   \code{expectUpdate()} is one of the main functions to test Shiny apps. It
+#'   performs one or more update operations via the browser, and then waits for
+#'   the specified output widgets to update. The test succeeds if all specified
+#'   output widgets are updated before the timeout. For updates that involve a
+#'   lot of computation, you increase the timeout.
 #'
 #' @name ShinyDriver
 #' @examples
