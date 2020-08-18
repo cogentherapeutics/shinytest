@@ -91,7 +91,7 @@ ShinyDriver <- R6Class(
     #' @param input,output,export Either `TRUE` to return all
     #'   input/output/exported values, or a character vector of specific
     #'   controls.
-    #' @exclude Names of objects to exclude from input, output, and export.
+    #' @param exclude Names of objects to exclude from input, output, and export.
     #' @param stop_on_error When `TRUE` (the default) error messages from the
     #'   shiny app are displayed and execution halts. When `FALSE` the HTTP
     #'   error code and message are included in the returned list.
@@ -361,7 +361,7 @@ ShinyDriver <- R6Class(
     #' @param filename Filename to use
     #' @param screenshot Take a screenshot? Overrides value set by
     #'   `$snapshotInit()`
-    #' @exclude Names of objects to exclude from `input`, `output`, and `export.`
+    #' @param exclude Names of objects to exclude from `input`, `output`, and `export.`
     #' @param stop_on_error When `TRUE` (the default) error messages from the
     #'   shiny app are displayed and execution halts. When `FALSE` the HTTP
     #'   error code and message are included in the snapshot.
