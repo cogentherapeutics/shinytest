@@ -3,12 +3,11 @@
 #' @description
 #'
 #' This class connects a `phantom.js` headless browser to a shiny app to enable
-#' testing the effects of user interactions. Specify `url` to connect to an
-#' existing shiny app. Otherwise, the app located at `path` will be launched in
-#' a separate subprocess.
+#' testing the effect of user interactions with a live app.  Specify `url` to
+#' connect to an existing shiny app, or omit `url` and the app located at
+#' `path` will be launched in a separate subprocess.
 #'
-#' This provides a full simulation of a Shiny app so that you can test user
-#' interactions with a live app.
+#' This provides a full simulation of a Shiny app so that you can
 #'
 #' @param iotype Type of the Shiny widget. Usually shinytest finds the widgets
 #'   by their name, so this is only needed if you use the same name for an input
