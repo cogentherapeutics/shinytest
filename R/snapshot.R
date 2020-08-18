@@ -1,6 +1,18 @@
-#' @importFrom xml2 read_html as_list
+sd_snapshotInit <- function(self, private, path, screenshot) {
+  if (grepl("^/", path)) {
+    stop("Snapshot dir must be a relative path.")
+  }
 
-sd_snapshot <- function(self, private, items, filename, screenshot, exclude, stop_on_error=TRUE)
+  # Strip off trailing slash if present
+  path <- sub("/$", "", path)
+
+  private$snapshotCount <- 0
+  private$snapshotDir <- path
+  private$snapshotScreenshot <- screenshot
+}
+
+sd_snapshot <- function(self, private, items, filename, screenshot, exclude,
+                        stop_on_error=TRUE)
 {
   if (!is.list(items) && !is.null(items))
     stop("'items' must be NULL or a list.")
@@ -39,26 +51,11 @@ sd_snapshot <- function(self, private, items, filename, screenshot, exclude, sto
   # Take snapshot -------------------------------------------------------------
   self$logEvent("Taking snapshot")
   url <- private$getTestSnapshotUrl(items$input, items$output, items$export)
-  req <- httr::GET(url)
+  req <- httr_get(url, stop_on_error)
 
   # Convert to text, then replace base64-encoded images with hashes of them.
   content <- raw_to_utf8(req$content)
   content <- hash_snapshot_image_data(content)
-
-  if(req$status_code != 200)
-  {
-    if(stop_on_error)
-    {
-      stop("Status code ", req$status_code, "\n", content)
-    } else {
-      new_content <- list(
-        status_code=req$status_code,
-        html=xml2::as_list(xml2::read_html(content))
-      )
-      content <- jsonlite::toJSON(new_content)
-    }
-  }
-
 
   # Remove any items specified in ignore
   if(length(exclude)>0)
@@ -96,12 +93,7 @@ sd_snapshot <- function(self, private, items, filename, screenshot, exclude, sto
   invisible(content)
 }
 
-
-sd_snapshotCompare <- function(self, private, autoremove) {
-  message("app$snapshotCompare() no longer used")
-}
-
-sd_snapshotDownload <- function(self, private, id, filename) {
+sd_snapshotDownload <- function(self, private, id, filename, stop_on_error=TRUE) {
 
   current_dir <- paste0(self$getSnapshotDir(), "-current")
 
@@ -113,8 +105,10 @@ sd_snapshotDownload <- function(self, private, id, filename) {
 
   # Find the URL to download from (the href of the <a> tag)
   url <- self$findElement(paste0("#", id))$getAttribute("href")
-
-  req <- httr::GET(url)
+  if (identical(url, "")) {
+    stop("Download from '#", id, "' failed")
+  }
+  req <- httr_get(url, stop_on_error)
 
   # For first snapshot, create -current snapshot dir.
   if (private$snapshotCount == 1) {
@@ -127,6 +121,26 @@ sd_snapshotDownload <- function(self, private, id, filename) {
   writeBin(req$content, file.path(current_dir, filename))
 
   invisible(req$content)
+}
+
+sd_getTestSnapshotUrl = function(self, private, input, output, export,
+                                 format) {
+  reqString <- function(group, value) {
+    if (isTRUE(value))
+      paste0(group, "=1")
+    else if (is.character(value))
+      paste0(group, "=", paste(value, collapse = ","))
+    else
+      ""
+  }
+  paste(
+    private$shinyTestSnapshotBaseUrl,
+    reqString("input", input),
+    reqString("output", output),
+    reqString("export", export),
+    paste0("format=", format),
+    sep = "&"
+  )
 }
 
 #' Compare current and expected snapshots
@@ -145,13 +159,13 @@ sd_snapshotDownload <- function(self, private, id, filename) {
 #' @param quiet Should output be suppressed? This is useful for automated
 #'   testing.
 #' @param images Should screenshots and PNG images be compared? It can be useful
-#'   to set this to \code{FALSE} when the expected results were taken on a
+#'   to set this to `FALSE` when the expected results were taken on a
 #'   different platform from the current results.
 #' @param suffix An optional suffix for the expected results directory. For
-#'   example, if the suffix is \code{"mac"}, the expected directory would be
-#'   \code{mytest-expected-mac}.
+#'   example, if the suffix is `"mac"`, the expected directory would be
+#'   `mytest-expected-mac`.
 #'
-#' @seealso \code{\link{testApp}}
+#' @seealso [testApp()]
 #'
 #' @export
 snapshotCompare <- function(
@@ -318,7 +332,7 @@ snapshotCompareSingle <- function(
 
   } else {
     if (!quiet) {
-      message("\n  No existing snapshots at ", basename(expected_dir), "/.",
+      message("\n  No existing snapshot at '", expected_dir, "/'",
               " This is a first run of tests.\n")
     }
 

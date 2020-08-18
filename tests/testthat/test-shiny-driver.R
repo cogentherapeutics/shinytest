@@ -7,8 +7,8 @@ test_that("able to initialize ShinyDriver", {
 })
 
 test_that("getValue", {
-
   app <- ShinyDriver$new(test_path("apps/081-widgets-gallery"))
+  expect_true(app$waitForShiny())
 
   expect_true(app$getValue("checkbox"))
   expect_identical(app$getValue("checkGroup"), "1")
@@ -36,4 +36,10 @@ test_that("window size", {
     app$getWindowSize(),
     list(width = 1200L, height = 800L)
   )
+})
+
+test_that("useful error message if app terminated", {
+  app <- ShinyDriver$new(test_path("apps/stopApp"))
+  app$findWidget("quit")$click()
+  expect_error(app$getAllValues(), "no longer running")
 })

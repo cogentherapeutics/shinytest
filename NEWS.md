@@ -1,6 +1,21 @@
 shinytest 1.4.0.9002
 ===============
 
+* `ShinyDriver$getAllValues()`, `ShinyDriver$snapshot()`, and
+  `ShinyDriver$snapshotDownload()` give clear errors messages if the Shiny
+  app is no longer running (e.g. because you've trigged a `stopApp()`) (#192).
+
+* `ShinyDriver$snapshotDownload()` gives a clear error message if the 
+  `fileInput()` does not exist (#191)
+
+* New `Widget$click()` method to click buttons (#325).
+
+* New `ShinyDriver$waitForShiny()` that waits until Shiny is done computing
+  on the reactive graph (#327). 
+
+* `testApp()` can now take a path to a directory containing a single 
+  interactive `.Rmd` (#334).
+
 * Fixed [#206](https://github.com/rstudio/shinytest/issues/206): On Windows, non-ASCII characters in JSON snapshots were written using the native encoding, instead of UTF-8. ([#318](https://github.com/rstudio/shinytest/pull/318), [#320](https://github.com/rstudio/shinytest/pull/320))
 
 * Added `registerInputProcessor()`, which allows other packages to control how code is generated when recording input values from input bindings from that package. ([#321])

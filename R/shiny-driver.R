@@ -1,4 +1,3 @@
-
 #' Class to manage a shiny app and a phantom.js headless browser
 #'
 #' @section Usage: \preformatted{app <- ShinyDriver$new(path = ".", loadTimeout
@@ -191,13 +190,28 @@ NULL
 
 #' @importFrom R6 R6Class
 #' @export
-
 ShinyDriver <- R6Class(
   "ShinyDriver",
 
   public = list(
 
-    initialize = function(path = ".", loadTimeout = 5000, checkNames = TRUE,
+    #' @param path Path to a directory containing a Shiny app, i.e. a
+    #'   single `app.R` file or a `server.R`-`ui.R` pair.
+    #' @param loadTimeout How long to wait for the app to load, in ms.
+    #'   This includes the time to start R. Defaults to 5s when running
+    #'   locally and 10s when running on CI.
+    #' @param phantomTimeout How long to wait when connecting to phantomJS
+    #'  process, in ms
+    #' @param checkNames Check if widget names are unique?
+    #' @param debug Start the app in debugging mode? In debugging mode debug
+    #'   messages are printed to the console.
+    #' @param seed An optional random seed to use before starting the application.
+    #'   For apps that use R's random number generator, this can make their
+    #'   behavior repeatable.
+    #' @param cleanLogs Whether to remove the stdout and stderr logs when the
+    #'     Shiny process object is garbage collected.
+    #' @param shinyOptions A list of options to pass to [shiny::runApp()].
+    initialize = function(path = ".", loadTimeout = NULL, checkNames = TRUE,
       debug = c("none", "all", shinytest::ShinyDriver$debugLogTypes),
       phantomTimeout = 5000, seed = NULL, cleanLogs = TRUE,
       shinyOptions = list(), url=NULL)
@@ -207,107 +221,280 @@ ShinyDriver <- R6Class(
         shinyOptions = shinyOptions, url=url)
     },
 
+    #' @description Stop app and clean up logs.
     finalize = function()
       sd_finalize(self, private),
 
+    #' @description
+    #' Stop the app, the terminate external R process that runs the app and
+    #' the phantomjs instance.
     stop = function()
       sd_stop(self, private),
 
-    # Note: This queries the **browser**
-    getValue = function(name, iotype = c("auto", "input", "output"))
-      sd_getValue(self, private, name, match.arg(iotype)),
+    #' @description
+    #' Finds a widget and queries its value. See the `getValue()` method of
+    #' [Widget] for more details.
+    getValue = function(name, iotype = c("auto", "input", "output")) {
+      "!DEBUG sd_getValue `name` (`iotype`)"
+      self$findWidget(name, iotype)$getValue()
+    },
 
-    setValue = function(name, value, iotype = c("auto", "input", "output"))
-      sd_setValue(self, private, name, value, match.arg(iotype)),
+    #' @description
+    #' Finds a widget and sets its value. It's a shortcut for `findElement()`
+    #' plus `setValue()`; see the [Widget] documentation for more details.
+    #'
+    #' @param value New value.
+    #' @return Self, invisibly.
+    setValue = function(name, value, iotype = c("auto", "input", "output")) {
+      "!DEBUG sd_setValue `name`"
+      self$findWidget(name, iotype)$setValue(value)
+      invisible(self)
+    },
 
-    # Note: This queries the server
-    getAllValues = function(input = TRUE, output = TRUE, export = TRUE)
-      sd_getAllValues(self, private, input, output, export),
+    #' @description
+    #' Returns a named list of all inputs, outputs, and export values.
+    #'
+    #' @param input,output,export Either `TRUE` to return all
+    #'   input/output/exported values, or a character vector of specific
+    #'   controls.
+    #' @exclude Names of objects to exclude from input, output, and export.
+    #' @param stop_on_error When `TRUE` (the default) error messages from the
+    #'   shiny app are displayed and execution halts. When `FALSE` the HTTP
+    #'   error code and message are included in the returned list.
+    getAllValues = function(input = TRUE, output = TRUE, export = TRUE,
+                            exclude=NULL, stop_on_error=TRUE)
+      sd_getAllValues(self, private, input, output, export, exclude,
+                      stop_on_error),
 
-    sendKeys = function(name = NULL, keys)
-      sd_sendKeys(self, private, name, keys),
+    #' @description
+    #' Sends the specified keys to specific HTML element. Shortcut for
+    #' `findWidget()` plus `sendKeys()`.
+    #' @param keys Keys to send to the widget or the app. See [webdriver::key]
+    #'   for how to specific special keys.
+    #' @return Self, invisibly.
+    sendKeys = function(name, keys) {
+      "!DEBUG sd_sendKeys `name`"
+      self$findWidget(name)$sendKeys(keys)
+      invisible(self)
+    },
 
-    setWindowSize = function(width, height)
-      sd_setWindowSize(self, private, width, height),
+    #' @description
+    #' Sets size of the browser window.
+    #' @param width,height Height and width of browser, in pixels.
+    #' @return Self, invisibly.
+    setWindowSize = function(width, height) {
+      "!DEBUG sd_setWindowSize `width`x`height`"
+      private$web$getWindow()$setSize(width, height)
+      invisible(self)
+    },
 
-    getWindowSize = function()
-      sd_getWindowSize(self, private),
+    #' @description
+    #' Get current size of the browser window, as list of integer scalars
+    #'   named `width` and `height`.
+    getWindowSize = function() {
+      "!DEBUG sd_getWindowSize"
+      private$web$getWindow()$getSize()
+    },
 
     ## Debugging
 
+    #' @description
+    #' Query one or more of the debug logs.
+    #' @param type Log type: `"all"`, `"shiny_console"`, `"browser"`,
+    #'   or `"shinytest"`.
     getDebugLog = function(type = c("all", ShinyDriver$debugLogTypes))
       sd_getDebugLog(self, private, match.arg(type, several.ok = TRUE)),
 
+    #' @description
+    #' Enable/disable debugging messages
+    #' @param enable New value.
     enableDebugLogMessages = function(enable = TRUE)
       sd_enableDebugLogMessages(self, private, enable),
 
     ## Event logging
 
+    #' @description Add event to log.
+    #' @param event Event name
+    #' @param ... Addition data to store for event
     logEvent = function(event, ...)
       sd_logEvent(self, private, event, ...),
 
+    #' @description Retrieve event log.
     getEventLog = function()
       sd_getEventLog(self, private),
 
-    ## These are just forwarded to the webdriver session
+    #' @description Get current url
+    getUrl = function() {
+      "!DEBUG sd_getUrl"
+      private$web$getUrl()
+    },
 
-    getUrl = function()
-      sd_getUrl(self, private),
+    #' @description Get page title
+    getTitle = function() {
+      "!DEBUG sd_getTitle"
+      private$web$getTitle()
+    },
 
-    goBack = function()
-      sd_goBack(self, private),
+    #' @description Get complete source of current page.
+    getSource = function() {
+      "!DEBUG sd_getSource"
+      private$web$getSource()
+    },
 
-    refresh = function()
-      sd_refresh(self, private),
+    #' @description Return to previous page
+    #' @return Self, invisibly.
+    goBack = function() {
+      "!DEBUG sd_goBack"
+      private$web$goBack()
+      invisible(self)
+    },
 
-    getTitle = function()
-      sd_getTitle(self, private),
+    #' @description Refresh the browser
+    #' @return Self, invisibly.
+    refresh = function() {
+      "!DEBUG refresh"
+      private$web$refresh()
+      invisible(self)
+    },
 
-    getSource = function()
-      sd_getSource(self, private),
+    #' @description
+    #' Takes a screenshot of the current page and writes it to a PNG file or
+    #' shows on current graphics device.
+    #' @param file File name to save the screenshot to. If `NULL`, then
+    #'   it will be shown on the R graphics device.
+    #' @return Self, invisibly.
+    takeScreenshot = function(file = NULL) {
+      "!DEBUG sd_takeScreenshot"
+      self$logEvent("Taking screenshot")
+      private$web$takeScreenshot(file)
 
-    takeScreenshot = function(file = NULL)
-      sd_takeScreenshot(self, private, file),
+      # On Windows, need to fix up the PNG resolution header to make it
+      # consistent.
+      if (is_windows()) {
+        normalize_png_res_header(file)
+      }
 
-    findElement = function(css = NULL, linkText = NULL,
-      partialLinkText = NULL, xpath = NULL)
-      sd_findElement(self, private, css, linkText, partialLinkText,
-                     xpath),
+      invisible(self)
+    },
 
-    findElements = function(css = NULL, linkText = NULL,
-      partialLinkText = NULL, xpath = NULL)
-      sd_findElements(self, private, css, linkText, partialLinkText,
-                      xpath),
+    #' @description
+    #' Find an HTML element on the page, using a CSS selector, XPath expression,
+    #' or link text (for `<a>` tags). If multiple elements are matched, only
+    #' the first is returned.
+    #' @return A [webdriver::Element].
+    findElement = function(css = NULL, linkText = NULL, partialLinkText = NULL, xpath = NULL) {
+      "!DEBUG sd_findElement '`css %||% linkText %||% partialLinkText %||% xpath`'"
+      private$web$findElement(css, linkText, partialLinkText, xpath)
+    },
 
-    waitFor = function(expr, checkInterval = 100, timeout = 3000)
-      sd_waitFor(self, private, expr, checkInterval, timeout),
+    #' @description
+    #' Find all elements matching CSS selection, xpath, or link text.
+    #' @return A list of [webdriver::Element]s.
+    findElements = function(css = NULL, linkText = NULL, partialLinkText = NULL, xpath = NULL) {
+      "!DEBUG sd_findElements '`css %||% linkText %||% partialLinkText %||% xpath`'"
+      private$web$findElements(css, linkText, partialLinkText, xpath)
+    },
 
+    #' @description
+    #' Waits until a JavaScript `expr`ession evaluates to `true` or the
+    #' `timeout` is exceeded.
+    #' @param expr A string containing JavaScript code. Will wait until the
+    #'   condition returns `true`.
+    #' @return `TRUE` if expression evaluates to `true` without error, before
+    #'   timeout. Otherwise returns `NA`.
+    waitFor = function(expr, checkInterval = 100, timeout = 3000)  {
+      "!DEBUG sd_waitFor"
+      private$web$waitFor(expr, checkInterval, timeout)
+    },
+
+    #' @description
+    #' Waits until Shiny is not busy, i.e. the reactive graph has finished
+    #' updating. This is useful, for example, if you've resized the window with
+    #' `setWindowSize()` and want to make sure all plot redrawing is complete
+    #' before take a screenshot.
+    #' @return `TRUE` if done before before timeout; `NA` otherwise.
+    waitForShiny = function()  {
+      # Shiny automatically sets using busy/idle events:
+      # https://github.com/rstudio/shiny/blob/e2537d/srcjs/shinyapp.js#L647-L655
+      # Details of busy event: https://shiny.rstudio.com/articles/js-events.html
+      private$web$waitFor("!$('html').first().hasClass('shiny-busy')")
+    },
+
+    #' @description
+    #' Waits until the `input` or `output` with name `name` is not one of
+    #' `ignore`d values, or the timeout is reached.
+    #'
+    #' This function can be useful in helping determine if an application
+    #' has initialized or finished processing a complex reactive situation.
+    #' @param ignore List of possible values to ignore when checking for
+    #'   updates.
     waitForValue = function(name, ignore = list(NULL, ""), iotype = c("input", "output", "export"), timeout = 10000, checkInterval = 400) {
       sd_waitForValue(self, private, name = name, ignore = ignore, iotype = match.arg(iotype), timeout = timeout, checkInterval = checkInterval)
     },
 
+    #' @description
+    #' Lists the names of all input and output widgets
+    #' @return A list of two character vectors, named `input` and `output`.
     listWidgets = function()
       sd_listWidgets(self, private),
 
+    #' @description
+    #' Check if Shiny widget names are unique.
     checkUniqueWidgetNames = function()
       sd_checkUniqueWidgetNames(self, private),
 
-    executeScript = function(script, ...)
-      sd_executeScript(self, private, script, ...),
+    #' @description Execute JS code
+    #' @param script JS to execute.
+    #' @param ... Additional arguments to script.
+    #' @return Self, invisibly.
+    executeScript = function(script, ...) {
+      "!DEBUG sd_executeScript"
+      private$web$executeScript(script, ...)
+      invisible(self)
+    },
 
-    executeScriptAsync = function(script, ...)
-      sd_executeScriptAsync(self, private, script, ...),
+    #' @description Execute JS code asynchronously.
+    #' @param script JS to execute.
+    #' @param ... Additional arguments to script.
+    #' @return Self, invisibly.
+    executeScriptAsync = function(script, ...) {
+      "!DEBUG sd_executeScriptAsync"
+      private$web$executeScriptAsync(script, ...)
+      invisible(self)
+    },
 
     ## Main methods
 
+    #' @description
+    #' Finds the a Shiny input or output control.
+    #' @return A [Widget].
     findWidget = function(name, iotype = c("auto", "input", "output"))
       sd_findWidget(self, private, name, match.arg(iotype)),
 
+    #' @description
+    #' It performs one or more update operations via the browser, thens
+    #' waits for the specified output(s) to update. The test succeeds if
+    #' all specified output widgets are updated before the `timeout`.
+    #' For updates that involve a lot of computation, increase the timeout.
+    #'
+    #' @param output Name of output control to check.
+    #' @param ... Name-value pairs used to update inputs.
     expectUpdate = function(output, ..., timeout = 3000,
       iotype = c("auto", "input", "output"))
       sd_expectUpdate(self, private, output, ..., timeout = timeout,
                        iotype = match.arg(iotype)),
 
+    #' @description
+    #' Sets input values.
+    #' @param ... Name-value pairs, `name1 = value1, name2 = value2` etc.
+    #'   Enput with name `name1` will be assigned value `value1`.
+    #' @param allowInputNoBinding_ When setting the value of an input, allow
+    #'   it to set the value of an input even if that input does not have
+    #'   an input binding.
+    #' @param priority_ Sets the event priority. For expert use only: see
+    #'   <https://shiny.rstudio.com/articles/communicating-with-js.html#values-vs-events> for details.
+    #' @param values_ If `TRUE`, will return final updated values of inputs.
+    #' @return Returns update values, invisibly.
     setInputs = function(..., wait_ = TRUE, values_ = TRUE, timeout_ = 3000,
       allowInputNoBinding_ = FALSE, priority_ = c("input", "event")) {
       sd_setInputs(self, private, ..., wait_ = wait_, values_ = values_,
@@ -315,43 +502,110 @@ ShinyDriver <- R6Class(
                    priority_ = priority_)
     },
 
+    #' @description
+    #' Uploads a file to a file input.
+    #' @param ... Name-path pairs, e.g. `name1 = path1`. The file located at
+    #' `path1` will be uploaded to file input with name `name1`.
+    #' @param values_ If `TRUE`, will return final updated values of download
+    #'   control.
     uploadFile = function(..., wait_ = TRUE, values_ = TRUE, timeout_ = 3000)
       sd_uploadFile(self, private, ..., wait_ = wait_, values_ = values_,
                      timeout_ = timeout_),
 
-    snapshotDownload = function(id, filename = NULL)
-      sd_snapshotDownload(self, private, id, filename),
+    #' @description
+    #' Download a snapshot. Generally, you should not call this function
+    #' yourself; it will be generated by [recordTest()] as needed.
+    #' @param path Directory to save snapshots.
+    #' @param screenshot Take screenshots for each snapshot?
+    snapshotInit = function(path, screenshot = TRUE)
+      sd_snapshotInit(self, private, path, screenshot),
 
+    #' @description
+    #' Take a snapshot. Generally, you should not call this function
+    #' yourself; it will be generated by [recordTest()] as needed.
+    #' @param items Elements to include in snapshot
+    #' @param filename Filename to use
+    #' @param screenshot Take a screenshot? Overrides value set by
+    #'   `$snapshotInit()`
+    #' @exclude Names of objects to exclude from `input`, `output`, and `export.`
+    #' @param stop_on_error When `TRUE` (the default) error messages from the
+    #'   shiny app are displayed and execution halts. When `FALSE` the HTTP
+    #'   error code and message are included in the snapshot.
     snapshot = function(items = NULL,
                         filename = NULL,
                         screenshot = NULL,
                         exclude = NULL,
-			stop_on_error = TRUE)
-      sd_snapshot(self, private, items, filename, screenshot, exclude, stop_on_error),
+                        stop_on_error = TRUE)
+      sd_snapshot(self, private, items, filename, screenshot, exclude,
+                  stop_on_error),
 
-    getAppDir = function()
-      sd_getAppDir(self, private),
 
-    getTestsDir = function()
-      sd_getTestsDir(self, private),
+    #' @description Deprecated
+    #' @param ... Ignored
+    snapshotCompare = function(...) {
+      message("app$snapshotCompare() no longer used")
+    },
 
-    getRelativePathToApp = function()
-      sd_getRelativePathToApp(self, private),
+    #' @description
+    #' Snapshot a file download action. Generally, you should not call this
+    #' function yourself; it will be generated by [recordTest()] as needed.
+    #' @param id Output id of [shiny::downloadButton()]/[shiny::downloadLink()]
+    #' @param filename File name to save file to. The default, `NULL`,
+    #'   generates an ascending sequence of names: `001.download`,
+    #'   `002.download`, etc.
+    #' @param stop_on_error When `TRUE` (the default) error messages from the
+    #'   shiny app are displayed and execution halts. When `FALSE` the HTTP
+    #'   error code and message are stored in the download file.
+    snapshotDownload = function(id, filename = NULL, stop_on_error=TRUE)
+      sd_snapshotDownload(self, private, id, filename, stop_on_error),
 
-    getSnapshotDir = function()
-      sd_getSnapshotDir(self, private),
+    #' @description Directory where app is located
+    getAppDir = function() {
+      # path can be a directory (for a normal Shiny app) or path to a .Rmd
+      if (self$isRmd()) dirname(private$path) else private$path
+    },
 
-    snapshotInit = function(path, screenshot = TRUE)
-      sd_snapshotInit(self, private, path, screenshot),
+    #' @description App file name, i.e. `app.R` or `server.R`. `NULL` for Rmds.
+    getAppFilename = function() {
+      if (!self$isRmd()) {
+        NULL
+      } else {
+        basename(private$path)
+      }
+    },
 
-    snapshotCompare = function(autoremove = TRUE)
-      sd_snapshotCompare(self, private, autoremove),
+    #' @description Directory where tests are located
+    getTestsDir = function() {
+      if (self$isRmd()) {
+        path <- dirname(private$path)
+      } else {
+        path <- private$path
+      }
+      findTestsDir(path, quiet = TRUE)
+    },
 
-    isRmd = function()
-      sd_isRmd(self, private),
+    #' @description Relative path to app from current directory.
+    getRelativePathToApp = function() {
+      # Get the relative path from the test directory to the parent. Since there
+      # are currently only two supported test dir options, we can just cheat
+      td <- self$getTestsDir()
+      if (grepl("[/\\\\]shinytest[/\\\\]?", td, perl = TRUE)) {
+        "../.."
+      } else {
+        ".."
+      }
+    },
 
-    getAppFilename = function()
-      sd_getAppFilename(self, private)
+    #' @description Directory where snapshots are located.
+    getSnapshotDir = function() {
+      testDir <- findTestsDir(self$getAppDir(), quiet = TRUE)
+      file.path(testDir, private$snapshotDir)
+    },
+
+    #' @description Is this app an Shiny Rmd document?
+    isRmd = function() {
+      is_rmd(private$path)
+    }
   ),
 
   private = list(
@@ -408,35 +662,6 @@ ShinyDriver$debugLogTypes <- c(
   "shinytest"
 )
 
-# Note: This queries the **browser**
-sd_getValue <- function(self, private, name, iotype) {
-  "!DEBUG sd_getValue `name` (`iotype`)"
-  self$findWidget(name, iotype)$getValue()
-}
-
-sd_setValue <- function(self, private, name, value, iotype) {
-  "!DEBUG sd_setValue `name`"
-  self$findWidget(name, iotype)$setValue(value)
-  invisible(self)
-}
-
-sd_sendKeys <- function(self, private, name, keys) {
-  "!DEBUG sd_sendKeys `name`"
-  self$findWidget(name)$sendKeys(keys)
-  invisible(self)
-}
-
-sd_getWindowSize <- function(self, private) {
-  "!DEBUG sd_getWindowSize"
-  private$web$getWindow()$getSize()
-}
-
-sd_setWindowSize <- function(self, private, width, height) {
-  "!DEBUG sd_setWindowSize `width`x`height`"
-  private$web$getWindow()$setSize(width, height)
-  invisible(self)
-}
-
 sd_stop <- function(self, private) {
   "!DEBUG sd_stop"
 
@@ -464,11 +689,6 @@ sd_stop <- function(self, private) {
 
   private$state <- "stopped"
   invisible(self)
-}
-
-sd_waitFor <- function(self, private, expr, checkInterval, timeout) {
-  "!DEBUG sd_waitFor"
-  private$web$waitFor(expr, checkInterval, timeout)
 }
 
 sd_waitForValue <- function(self, private, name, ignore = list(NULL, ""), iotype = "input", timeout = 10000, checkInterval = 400) {
@@ -516,7 +736,6 @@ sd_waitForValue <- function(self, private, name, ignore = list(NULL, ""), iotype
     # wait a little bit for shiny to do some work
     Sys.sleep(checkInterval / 1000)
   }
-
 }
 
 sd_listWidgets <- function(self, private) {
@@ -554,97 +773,4 @@ sd_checkUniqueWidgetNames <- function(self, private) {
 
   if (length(inputs) > 0) check("input", inputs)
   if (length(outputs) > 0) check("output", outputs)
-}
-
-sd_executeScript <- function(self, private, script, ...) {
-  "!DEBUG sd_executeScript"
-  private$web$executeScript(script, ...)
-}
-
-sd_executeScriptAsync <- function(self, private, script, ...) {
-  "!DEBUG sd_executeScriptAsync"
-  private$web$executeScriptAsync(script, ...)
-}
-
-sd_getTestSnapshotUrl = function(self, private, input, output, export,
-                                 format) {
-  reqString <- function(group, value) {
-    if (isTRUE(value))
-      paste0(group, "=1")
-    else if (is.character(value))
-      paste0(group, "=", paste(value, collapse = ","))
-    else
-      ""
-  }
-  paste(
-    private$shinyTestSnapshotBaseUrl,
-    reqString("input", input),
-    reqString("output", output),
-    reqString("export", export),
-    paste0("format=", format),
-    sep = "&"
-  )
-}
-
-sd_getAppDir <- function(self, private) {
-  # private$path can be a directory (for a normal Shiny app) or path to a .Rmd
-  # file.
-  if (self$isRmd())
-    dirname(private$path)
-  else
-    private$path
-}
-
-# Returns the tests/ or tests/shinytest/ dir otherwise, based on
-# what it finds in each dir.
-sd_getTestsDir <- function(self, private) {
-  # private$path can be a directory (for a normal Shiny app) or path to a .Rmd
-  # file.
-  path <- private$path
-  if (self$isRmd()) {
-    path <- dirname(private$path)
-  }
-  findTestsDir(path, quiet=TRUE)
-}
-
-# Get the relative path from the test directory to the parent. Since there are currently
-# only two supported test dir options, we can just cheat rather than doing a real path computation
-# between the two paths.
-sd_getRelativePathToApp <- function(self, private) {
-  td <- self$getTestsDir()
-  if (grepl("[/\\\\]shinytest[/\\\\]?", td, perl=TRUE)) {
-    return(file.path("..", ".."))
-  } else {
-    return(file.path(".."))
-  }
-}
-
-sd_getSnapshotDir <- function(self, private) {
-  testDir <- findTestsDir(self$getAppDir(), quiet=TRUE)
-  file.path(testDir, private$snapshotDir)
-}
-
-sd_snapshotInit <- function(self, private, path, screenshot) {
-  if (grepl("^/", path)) {
-    stop("Snapshot dir must be a relative path.")
-  }
-
-  # Strip off trailing slash if present
-  path <- sub("/$", "", path)
-
-  private$snapshotCount <- 0
-  private$snapshotDir <- path
-  private$snapshotScreenshot <- screenshot
-}
-
-sd_isRmd <- function(self, private) {
-  is_rmd(private$path)
-}
-
-sd_getAppFilename <- function(self, private) {
-  if (!self$isRmd()) {
-    NULL
-  } else {
-    basename(private$path)
-  }
 }
