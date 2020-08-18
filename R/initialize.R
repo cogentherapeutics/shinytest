@@ -251,7 +251,7 @@ find_phantom <- function(quiet = FALSE) {
 sd_finalize <- function(self, private) {
   self$stop()
 
-  if (isTRUE(private$cleanLogs)) {
+  if (!is.null(private$shinyProcess) && isTRUE(private$cleanLogs)) {
     unlink(private$shinyProcess$get_output_file())
     unlink(private$shinyProcess$get_error_file())
   }
