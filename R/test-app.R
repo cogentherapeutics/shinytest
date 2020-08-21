@@ -17,7 +17,9 @@
 #' @param suffix An optional suffix for the expected results directory. For
 #'   example, if the suffix is `"mac"`, the expected directory would be
 #'   `mytest-expected-mac`.
-#'
+#' @param url Optional URL where the shiny app to be tested is accessible,
+#'   defaults to the value of `options(shinytest.url)`. If `NULL` (the usual
+#'   case) the shiny app will be run in a sub-process.
 #' @seealso [snapshotCompare()] and [snapshotUpdate()] if
 #'   you want to compare or update snapshots after testing. In most cases, the
 #'   user is prompted to do these tasks interactively, but there are also times
@@ -30,7 +32,8 @@ testApp <- function(
   quiet = FALSE,
   compareImages = TRUE,
   interactive = base::interactive(),
-  suffix = NULL
+  suffix = NULL,
+  url = getOption("shinytest.url")
 )
 {
   library(shinytest)
@@ -58,6 +61,9 @@ testApp <- function(
       )
     }
   }
+
+  if(!missing(url))
+    options(.shinytest.url=url)
 
   testsDir <- findTestsDir(appDir, quiet=FALSE)
   found_testnames <- findTests(testsDir, testnames)

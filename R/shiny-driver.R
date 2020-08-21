@@ -44,11 +44,19 @@ ShinyDriver <- R6Class(
     #' @param cleanLogs Whether to remove the stdout and stderr logs when the
     #'     Shiny process object is garbage collected.
     #' @param shinyOptions A list of options to pass to [shiny::runApp()].
-    #' @param url Optional URL where the shiny app is executing.
-    initialize = function(path = ".", loadTimeout = NULL, checkNames = TRUE,
-      debug = c("none", "all", shinytest::ShinyDriver$debugLogTypes),
-      phantomTimeout = 5000, seed = NULL, cleanLogs = TRUE,
-      shinyOptions = list(), url=NULL)
+    #' @param url Optional URL where the shiny app to be tested is accessible,
+    #'  defaults to the value of `options(shinytest.url)`. If `NULL` (the usual
+    #'  case) the shiny app will be run in a sub-process.
+    initialize = function(path = ".",
+                          loadTimeout = NULL,
+                          checkNames = TRUE,
+                          debug = c("none", "all", shinytest::ShinyDriver$debugLogTypes),
+                          phantomTimeout = 5000,
+                          seed = NULL,
+                          cleanLogs = TRUE,
+                          shinyOptions = list(),
+                          url = getOption("shinytest.url")
+                          )
     {
       sd_initialize(self, private, path, loadTimeout, checkNames, debug,
         phantomTimeout = phantomTimeout, seed = seed, cleanLogs = cleanLogs,

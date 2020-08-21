@@ -4,7 +4,7 @@
 
 sd_initialize <- function(self, private, path, loadTimeout, checkNames,
                           debug, phantomTimeout, seed, cleanLogs,
-                          shinyOptions, url=NULL) {
+                          shinyOptions, url) {
 
   private$cleanLogs <- cleanLogs
   if (is.null(loadTimeout)) {
