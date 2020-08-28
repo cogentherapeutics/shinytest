@@ -46,7 +46,7 @@ case) the shiny app will be run in a sub-process.}
 \item{Ncpus}{Number of processes to use for running test scripts or \code{NULL} to
 disable this feature.  Defaults to \code{getOption("Ncpus")}.}
 
-\item{A}{cluster object to be used when \code{Ncpus > 0}.  If \code{Ncpus>0} and
+\item{cl}{A cluster object to be used when \code{Ncpus > 0}.  If \code{Ncpus>0} and
 \code{cl} is \code{NULL} (the default), use the registered default cluster if defined,
 otherwise start a PSOCK cluster with \code{Ncpus} nodes.}
 }

@@ -21,7 +21,7 @@
 #'   case) the shiny app will be run in a sub-process.
 #' @param Ncpus Number of processes to use for running test scripts or `NULL` to
 #'   disable this feature.  Defaults to `getOption("Ncpus")`.
-#' @param A cluster object to be used when `Ncpus > 0`.  If `Ncpus>0` and
+#' @param cl A cluster object to be used when `Ncpus > 0`.  If `Ncpus>0` and
 #'   `cl` is `NULL` (the default), use the registered default cluster if defined,
 #'   otherwise start a PSOCK cluster with `Ncpus` nodes.
 #' @seealso [snapshotCompare()] and [snapshotUpdate()] if you want to compare or
@@ -31,10 +31,13 @@
 #'
 #' @export
 #'
+#' @importFrom parallel clusterEvalQ
+#' @importFrom parallel clusterExport
+#' @importFrom parallel getDefaultCluster
 #' @importFrom parallel makeCluster
 #' @importFrom parallel parLapplyLB
-#' @importFrom parallel clusterEvalQ
-#' @importFrom parallel getDefaultCluster
+#' @importFrom parallel stopCluster
+#' @importFrom utils capture.output
 #'
 testApp <- function(
   appDir = ".",
@@ -134,7 +137,7 @@ testApp <- function(
       }
     }
     clusterEvalQ(cl, library("shinytest") )
-    clusterExport(cl, "testsDir", envir = 1 )
+    clusterExport(cl, "testsDir", envir=environment())
     parLapplyLB(cl = cl, found_testnames, workfun)
   }
 
