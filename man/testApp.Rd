@@ -10,7 +10,10 @@ testApp(
   quiet = FALSE,
   compareImages = TRUE,
   interactive = base::interactive(),
-  suffix = NULL
+  suffix = NULL,
+  url = getOption("shinytest.url"),
+  Ncpus = getOption("Ncpus"),
+  cl = NULL
 )
 }
 \arguments{
@@ -18,9 +21,8 @@ testApp(
 single interactive \code{.Rmd}.}
 
 \item{testnames}{Test script(s) to run. The .R extension of the filename is
-optional. For example, \code{"mytest"} or \code{c("mytest", "mytest2.R")}.
-If \code{NULL} (the default), all scripts in the tests/ directory will be
-run.}
+optional. For example, \code{"mytest"} or \code{c("mytest", "mytest2.R")}. If \code{NULL}
+(the default), all scripts in the tests/ directory will be run.}
 
 \item{quiet}{Should output be suppressed? This is useful for automated
 testing.}
@@ -36,13 +38,24 @@ changes and allows the user to accept or reject the changes.}
 \item{suffix}{An optional suffix for the expected results directory. For
 example, if the suffix is \code{"mac"}, the expected directory would be
 \code{mytest-expected-mac}.}
+
+\item{url}{Optional URL where the shiny app to be tested is accessible,
+defaults to the value of \code{options(shinytest.url)}. If \code{NULL} (the usual
+case) the shiny app will be run in a sub-process.}
+
+\item{Ncpus}{Number of processes to use for running test scripts or \code{NULL} to
+disable this feature.  Defaults to \code{getOption("Ncpus")}.}
+
+\item{A}{cluster object to be used when \code{Ncpus > 0}.  If \code{Ncpus>0} and
+\code{cl} is \code{NULL} (the default), use the registered default cluster if defined,
+otherwise start a PSOCK cluster with \code{Ncpus} nodes.}
 }
 \description{
 Run tests for a Shiny application
 }
 \seealso{
-\code{\link[=snapshotCompare]{snapshotCompare()}} and \code{\link[=snapshotUpdate]{snapshotUpdate()}} if
-you want to compare or update snapshots after testing. In most cases, the
-user is prompted to do these tasks interactively, but there are also times
-where it is useful to call these functions from the console.
+\code{\link[=snapshotCompare]{snapshotCompare()}} and \code{\link[=snapshotUpdate]{snapshotUpdate()}} if you want to compare or
+update snapshots after testing. In most cases, the user is prompted to do
+these tasks interactively, but there are also times where it is useful to
+call these functions from the console.
 }

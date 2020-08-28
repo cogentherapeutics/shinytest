@@ -73,7 +73,7 @@ This provides a full simulation of a Shiny app so that you can
   seed = NULL,
   cleanLogs = TRUE,
   shinyOptions = list(),
-  url = NULL
+  url = getOption("shinytest.url")
 )}\if{html}{\out{</div>}}
 }
 
@@ -104,7 +104,9 @@ Shiny process object is garbage collected.}
 
 \item{\code{shinyOptions}}{A list of options to pass to \code{\link[shiny:runApp]{shiny::runApp()}}.}
 
-\item{\code{url}}{Optional URL where the shiny app is executing.}
+\item{\code{url}}{Optional URL where the shiny app to be tested is accessible,
+defaults to the value of \code{options(shinytest.url)}. If \code{NULL} (the usual
+case) the shiny app will be run in a sub-process.}
 }
 \if{html}{\out{</div>}}
 }

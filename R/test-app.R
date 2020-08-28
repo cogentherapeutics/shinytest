@@ -3,9 +3,8 @@
 #' @param appDir Path to directory containing a Shiny app (e.g. `app.R`) or
 #'   single interactive `.Rmd`.
 #' @param testnames Test script(s) to run. The .R extension of the filename is
-#'   optional. For example, `"mytest"` or `c("mytest", "mytest2.R")`.
-#'   If `NULL` (the default), all scripts in the tests/ directory will be
-#'   run.
+#'   optional. For example, `"mytest"` or `c("mytest", "mytest2.R")`. If `NULL`
+#'   (the default), all scripts in the tests/ directory will be run.
 #' @param quiet Should output be suppressed? This is useful for automated
 #'   testing.
 #' @param compareImages Should screenshots be compared? It can be useful to set
@@ -20,12 +19,23 @@
 #' @param url Optional URL where the shiny app to be tested is accessible,
 #'   defaults to the value of `options(shinytest.url)`. If `NULL` (the usual
 #'   case) the shiny app will be run in a sub-process.
-#' @seealso [snapshotCompare()] and [snapshotUpdate()] if
-#'   you want to compare or update snapshots after testing. In most cases, the
-#'   user is prompted to do these tasks interactively, but there are also times
-#'   where it is useful to call these functions from the console.
+#' @param Ncpus Number of processes to use for running test scripts or `NULL` to
+#'   disable this feature.  Defaults to `getOption("Ncpus")`.
+#' @param A cluster object to be used when `Ncpus > 0`.  If `Ncpus>0` and
+#'   `cl` is `NULL` (the default), use the registered default cluster if defined,
+#'   otherwise start a PSOCK cluster with `Ncpus` nodes.
+#' @seealso [snapshotCompare()] and [snapshotUpdate()] if you want to compare or
+#'   update snapshots after testing. In most cases, the user is prompted to do
+#'   these tasks interactively, but there are also times where it is useful to
+#'   call these functions from the console.
 #'
 #' @export
+#'
+#' @importFrom parallel makeCluster
+#' @importFrom parallel parLapplyLB
+#' @importFrom parallel clusterEvalQ
+#' @importFrom parallel getDefaultCluster
+#'
 testApp <- function(
   appDir = ".",
   testnames = NULL,
@@ -33,10 +43,15 @@ testApp <- function(
   compareImages = TRUE,
   interactive = base::interactive(),
   suffix = NULL,
-  url = getOption("shinytest.url")
+  url = getOption("shinytest.url"),
+  Ncpus = getOption("Ncpus"),
+  cl = NULL
 )
 {
   library(shinytest)
+
+  if(length(Ncpus)==1 && Ncpus>1 && is.null(cl))
+    cl <- parallel::makeCluster(Ncpus)
 
   # appDir could be the path to an .Rmd file. If so, make it point to the actual
   # directory.
@@ -75,9 +90,13 @@ testApp <- function(
 
   # Run all the test scripts.
   if (!quiet) {
-    message("Running ", appendLF = FALSE)
+    if(is.null(cl))
+      message("Running ", length(found_testnames), " test scripts:")
+    else
+      message("Running ", length(found_testnames), " test scripts using ", Ncpus, " workers.")
   }
-  lapply(found_testnames, function(testname) {
+
+  workfun <- function(testname) {
     # Run in test directory, and pass the (usually relative) path as an option,
     # so that the printed output can print the relative path.
     withr::local_dir(testsDir)
@@ -93,8 +112,31 @@ testApp <- function(
     if (!quiet) {
       message(testname, " ", appendLF = FALSE)
     }
-    source(testname, local = env)
-  })
+    e <- system.time(source(testname, local = env))
+    message(e[3], "sec")
+  }
+
+  if(is.null(Ncpus) || Ncpus==0)
+    lapply(found_testnames, workfun)
+  else
+  {
+    if(is.null(cl))
+    {
+      cl = getDefaultCluster()
+      if(is.null(cl))
+      {
+        cl <- makeCluster(Ncpus)
+        on.exit(stopCluster(cl))
+        message(
+          "No cluster provided, and no default cluster specified, ",
+          "creating and using ", capture.output(print(cl)), "."
+          )
+      }
+    }
+    clusterEvalQ(cl, library("shinytest") )
+    clusterExport(cl, "testsDir", envir = 1 )
+    parLapplyLB(cl = cl, found_testnames, workfun)
+  }
 
   gc()
 

@@ -33,6 +33,7 @@ Imports:
     httpuv,
     httr,
     jsonlite,
+    parallel,
     parsedate,
     pingr,
     R6,
