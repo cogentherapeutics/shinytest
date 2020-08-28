@@ -39,22 +39,17 @@
 #' @importFrom parallel stopCluster
 #' @importFrom utils capture.output
 #'
-testApp <- function(
-  appDir = ".",
-  testnames = NULL,
-  quiet = FALSE,
-  compareImages = TRUE,
-  interactive = base::interactive(),
-  suffix = NULL,
-  url = getOption("shinytest.url"),
-  Ncpus = getOption("Ncpus"),
-  cl = NULL
-)
+testApp <- function(appDir = ".",
+                    testnames = NULL,
+                    quiet = FALSE,
+                    compareImages = TRUE,
+                    interactive = base::interactive(),
+                    suffix = NULL,
+                    url = getOption("shinytest.url"),
+                    Ncpus = getOption("Ncpus"),
+                    cl = NULL)
 {
   library(shinytest)
-
-  if(length(Ncpus)==1 && Ncpus>1 && is.null(cl))
-    cl <- parallel::makeCluster(Ncpus)
 
   # appDir could be the path to an .Rmd file. If so, make it point to the actual
   # directory.
@@ -73,17 +68,15 @@ testApp <- function(
     if (length(rmds) == 1) {
       app_filename <- rmds
     } else {
-      stop(
-        "`appDir` doesn't contain 'app.R', 'server.R', or exactly one '.Rmd'",
-        call. = FALSE
-      )
+      stop("`appDir` doesn't contain 'app.R', 'server.R', or exactly one '.Rmd'",
+           call. = FALSE)
     }
   }
 
-  if(!missing(url))
-    options(.shinytest.url=url)
+  if (!missing(url))
+    options(.shinytest.url = url)
 
-  testsDir <- findTestsDir(appDir, quiet=FALSE)
+  testsDir <- findTestsDir(appDir, quiet = FALSE)
   found_testnames <- findTests(testsDir, testnames)
   found_testnames_no_ext <- sub("\\.[rR]$", "", found_testnames)
 
@@ -92,12 +85,6 @@ testApp <- function(
   }
 
   # Run all the test scripts.
-  if (!quiet) {
-    if(is.null(cl))
-      message("Running ", length(found_testnames), " test scripts:")
-    else
-      message("Running ", length(found_testnames), " test scripts using ", Ncpus, " workers.")
-  }
 
   workfun <- function(testname) {
     # Run in test directory, and pass the (usually relative) path as an option,
@@ -119,31 +106,45 @@ testApp <- function(
     message(e[3], "sec")
   }
 
-  if(is.null(Ncpus) || Ncpus==0)
+  if (is.null(Ncpus) || Ncpus == 0)
+  {
+    if (!quiet) {
+      message("Running ", length(found_testnames), " test scripts:")
+    }
     lapply(found_testnames, workfun)
+  }
   else
   {
-    if(is.null(cl))
+    if (is.null(cl))
     {
       cl = getDefaultCluster()
-      if(is.null(cl))
+      if (is.null(cl))
       {
         cl <- makeCluster(Ncpus)
         on.exit(stopCluster(cl))
-        message(
-          "No cluster provided, and no default cluster specified, ",
-          "creating and using ", capture.output(print(cl)), "."
-          )
+        message("No cluster provided, and no default cluster specified. ")
+        message("Creating and using ", capture.output(print(cl)), ".")
       }
     }
-    clusterEvalQ(cl, library("shinytest") )
-    clusterExport(cl, "testsDir", envir=environment())
+    if (!quiet) {
+      message(
+        "Running ",
+        length(found_testnames),
+        " test scripts in parallel using ",
+        Ncpus,
+        " workers."
+      )
+    }
+
+    clusterEvalQ(cl, library("shinytest"))
+    clusterExport(cl, "testsDir", envir = environment())
     parLapplyLB(cl = cl, found_testnames, workfun)
   }
 
   gc()
 
-  if (!quiet) message("")  # New line
+  if (!quiet)
+    message("")  # New line
 
   # Compare all results
   return(
@@ -157,6 +158,7 @@ testApp <- function(
     )
   )
 }
+
 
 #' Identify in which directory the tests are contained.
 #'
@@ -173,14 +175,16 @@ testApp <- function(
 #'     some are and some aren't, throw an error.
 #'  3. Assuming all top-level R files in `tests/` appear to be shinytest, return that dir.
 #' @noRd
-findTestsDir <- function(appDir, mustExist=TRUE, quiet=TRUE) {
-  if (basename(appDir) == "tests"){
+findTestsDir <- function(appDir,
+                         mustExist = TRUE,
+                         quiet = TRUE) {
+  if (basename(appDir) == "tests") {
     # We were given a */tests/ directory. It's possible that we're in the middle of a nested tests
     # directory and the application dir is actually one level up. This happens in certain versions
     # of the RStudio IDE.
     # https://github.com/rstudio/rstudio/issues/5677
 
-    if (!dir_exists(file.path(appDir, "tests"))){
+    if (!dir_exists(file.path(appDir, "tests"))) {
       # We're in a dir called `tests` and there's not another `tests` directory inside, so we can
       # assume that the app dir is actually probably one level up.
       appDir <- dirname(appDir)
@@ -195,9 +199,10 @@ findTestsDir <- function(appDir, mustExist=TRUE, quiet=TRUE) {
     return(file.path(testsDir, "shinytest"))
   }
 
-  r_files <- list.files(testsDir, pattern = "\\.[rR]$", full.names = TRUE)
+  r_files <-
+    list.files(testsDir, pattern = "\\.[rR]$", full.names = TRUE)
   is_test <- vapply(r_files, function(f) {
-    isShinyTest(readLines(f, warn=FALSE))
+    isShinyTest(readLines(f, warn = FALSE))
   }, logical(1))
 
   if (dir_exists(file.path(testsDir, "shinytests"))) {
@@ -215,21 +220,25 @@ findTestsDir <- function(appDir, mustExist=TRUE, quiet=TRUE) {
     # using the old layout (tests at the top-level) might have just had a directory
     # named shinytest. Let's leave them a clue.
     if (any(is_test) && !quiet) {
-      warning("Assuming that the shinytests are stored in tests/shinytest, but it appears that there are some ",
-              "shinytests in the top-level tests/ directory. All shinytests should be placed in the tests/shinytest/ directory.")
+      warning(
+        "Assuming that the shinytests are stored in tests/shinytest, but it appears that there are some ",
+        "shinytests in the top-level tests/ directory. All shinytests should be placed in the tests/shinytest/ directory."
+      )
     }
 
     return(shinytestDir)
   }
 
-  if (!any(is_test) && !mustExist){
+  if (!any(is_test) && !mustExist) {
     # There may be some stuff in the tests directory, but if it's not shinytest-related...
     # Ignore and just use the nested dir
     return(shinytestDir)
   }
 
   if (!all(is_test)) {
-    stop("Found R files that don't appear to be shinytests in the tests/ directory. shinytests should be placed in tests/shinytest/")
+    stop(
+      "Found R files that don't appear to be shinytests in the tests/ directory. shinytests should be placed in tests/shinytest/"
+    )
   }
 
   if (!quiet) {
@@ -246,13 +255,13 @@ findTestsDir <- function(appDir, mustExist=TRUE, quiet=TRUE) {
 #' Scans for the magic string of `app <- ShinyDriver$new(` as an indicator that this is a shinytest.
 #' @noRd
 isShinyTest <- function(text) {
-  lines <- grepl("app\\s*<-\\s*ShinyDriver\\$new\\(", text, perl=TRUE)
+  lines <- grepl("app\\s*<-\\s*ShinyDriver\\$new\\(", text, perl = TRUE)
   any(lines)
 }
 
 #' Finds the relevant tests in a given directory
 #' @noRd
-findTests <- function(testsDir, testnames=NULL) {
+findTests <- function(testsDir, testnames = NULL) {
   found_testnames <- list.files(testsDir, pattern = "\\.[rR]$")
   found_testnames_no_ext <- sub("\\.[rR]$", "", found_testnames)
 
@@ -264,8 +273,7 @@ findTests <- function(testsDir, testnames=NULL) {
 
     if (any(is.na(idx))) {
       stop("Test scripts do not exist: ",
-        paste0(testnames[is.na(idx)], collapse =", ")
-      )
+           paste0(testnames[is.na(idx)], collapse = ", "))
     }
 
     # Keep only specified files
@@ -275,27 +283,31 @@ findTests <- function(testsDir, testnames=NULL) {
   found_testnames
 }
 
-all_testnames <- function(testDir, suffixes = c("-expected", "-current")) {
-  # Create a regex string like "(-expected|-current)$"
-  pattern <- paste0(
-    "(",
-    paste0(suffixes, collapse = "|"),
-    ")$"
-  )
+all_testnames <-
+  function(testDir,
+           suffixes = c("-expected", "-current")) {
+    # Create a regex string like "(-expected|-current)$"
+    pattern <- paste0("(",
+                      paste0(suffixes, collapse = "|"),
+                      ")$")
 
-  testnames <- dir(testDir, pattern = pattern)
-  testnames <- sub(pattern, "", testnames)
-  unique(testnames)
-}
+    testnames <- dir(testDir, pattern = pattern)
+    testnames <- sub(pattern, "", testnames)
+    unique(testnames)
+  }
 
 
 validate_testname <- function(testDir, testname) {
   valid_testnames <- all_testnames(testDir)
 
   if (is.null(testname) || !(testname %in% valid_testnames)) {
-    stop('"', testname, '" ',
+    stop(
+      '"',
+      testname,
+      '" ',
       'is not a valid testname for the app. Valid names are: "',
-      paste(valid_testnames, collapse = '", "'), '".'
+      paste(valid_testnames, collapse = '", "'),
+      '".'
     )
   }
 }
